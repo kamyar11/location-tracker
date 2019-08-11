@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="permission_explanation">This application needs read/write access to storage and read access to the device\'s GPS sensor in order to function; If a dialog to grant the permission is not displayed by the OS, it\'s probably because user denied it permanently or because it\'s denied automatically based on your OS policies;
+        Try manually granting the permisssion in Settings/ Applications/ \'This application name\'/ Permissions.</string>
+</resources>
