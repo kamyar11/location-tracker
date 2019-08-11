@@ -13,25 +13,40 @@
             android:id="@+id/start_service_id"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="10dp"
+            android:layout_marginStart="10dp"
+            android:layout_marginLeft="10dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginRight="10dp"
+            android:layout_marginBottom="10dp"
             android:singleLine="true"
-            android:text="شروع ثبت موقعیت" />
+            android:text="Start tracking location" />
 
         <Button
             android:id="@+id/stop_service_id"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@+id/start_service_id"
-            android:layout_margin="10dp"
-            android:text="توقف سرویس" />
+            android:layout_marginStart="10dp"
+            android:layout_marginLeft="10dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginRight="10dp"
+            android:layout_marginBottom="10dp"
+            android:text="Stop tracking location" />
 
         <Button
             android:id="@+id/show_result_but_id"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@+id/stop_service_id"
-            android:layout_margin="10dp"
-            android:text="نمایش موقعیت های ثبت شده" />
+            android:layout_marginStart="10dp"
+            android:layout_marginLeft="10dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginRight="10dp"
+            android:layout_marginBottom="10dp"
+            android:text="Show recorded locations" />
 
     </RelativeLayout>
 

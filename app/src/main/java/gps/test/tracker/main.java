@@ -59,7 +59,7 @@ public class main extends AppCompatActivity {
         stop_service.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                start_service.setText("شروع ثبت موقعیت");
+                start_service.setText("Start tracking location");
                 stopService(intent);
             }
         });
@@ -70,7 +70,7 @@ public class main extends AppCompatActivity {
                 Intent intent1=new Intent(getApplicationContext(),show_results.class);
                 startActivity(intent1);}
                 else{
-                    Toast.makeText(getApplicationContext(),"موقعیتی ثبت نشده" ,Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getApplicationContext(),"No location recorded" ,Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -85,13 +85,13 @@ public class main extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if(!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)){
-                    Toast.makeText(getApplicationContext(),"جی پی اس غیر فعال است",Toast.LENGTH_LONG).show();
+                    Toast.makeText(getApplicationContext(),"gps sensor is turned off",Toast.LENGTH_LONG).show();
                     return;
                 }
                 intent.putExtra("distance",back_ground_tracking.Stringnumtoint(dist.getText().toString()));
                 intent.putExtra("interval",back_ground_tracking.Stringnumtoint(interv.getText().toString())*60000);
                 startService(intent);
-                start_service.setText("شروع مجدد");
+                start_service.setText("Restart with new configuration");
                 dialog.dismiss();
             }
         });
