@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/world_map"
+    android:orientation="vertical">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <Button
+            android:id="@+id/start_service_id"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            android:singleLine="true"
+            android:text="شروع ثبت موقعیت" />
+
+        <Button
+            android:id="@+id/stop_service_id"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/start_service_id"
+            android:layout_margin="10dp"
+            android:text="توقف سرویس" />
+
+        <Button
+            android:id="@+id/show_result_but_id"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/stop_service_id"
+            android:layout_margin="10dp"
+            android:text="نمایش موقعیت های ثبت شده" />
+
+    </RelativeLayout>
+
+</LinearLayout>
