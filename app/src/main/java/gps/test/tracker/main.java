@@ -14,6 +14,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -31,19 +32,24 @@ public class main extends AppCompatActivity {
     private TextView textView;
     private EditText dist,interv;
     private Intent intent;
+    private boolean app_exited;
+    private Database_io db_io;
+    private Thread check_if_permission_is_granted_yet_thread;
     private View permission_warning;
     private static final int WRITE_EXTERNAL_STORAGE_PERMISSION_REQUEST=0;
     private LocationManager locationManager;
 
     @TargetApi(23)
     private void handle_permissions(){
-        if (ContextCompat.checkSelfPermission(main.this,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        if ((ContextCompat.checkSelfPermission(main.this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE)|ContextCompat.checkSelfPermission(main.this,
+                Manifest.permission.ACCESS_FINE_LOCATION))
                 != PackageManager.PERMISSION_GRANTED) {
             // Permission is not granted
             // Should we show an explanation?
 
             if (ActivityCompat.shouldShowRequestPermissionRationale(main.this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE)||ActivityCompat.shouldShowRequestPermissionRationale(main.this,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
                 //it was just denied, let the user decide
                 ActivityCompat.requestPermissions(main.this,
@@ -51,7 +57,7 @@ public class main extends AppCompatActivity {
                         WRITE_EXTERNAL_STORAGE_PERMISSION_REQUEST);
             } else {
                 ActivityCompat.requestPermissions(main.this,
-                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,Manifest.permission.ACCESS_FINE_LOCATION},
                         WRITE_EXTERNAL_STORAGE_PERMISSION_REQUEST);
                 //it was denied permanently; either user made this decision or the OS policies prevented it from being granted
             }
@@ -70,12 +76,11 @@ public class main extends AppCompatActivity {
             }
         });
         if(Build.VERSION.SDK_INT>22)handle_permissions();
-
-
     }
     private void init_activity(){
         //permission 'granet' :)
         permission_warning.setVisibility(View.GONE);
+        db_io=new Database_io(getApplicationContext());
         locationManager=(LocationManager)this.getSystemService(Context.LOCATION_SERVICE);
         start_service=(Button)findViewById(R.id.start_service_id);stop_service=(Button)findViewById(R.id.stop_service_id);show_result_but=(Button)findViewById(R.id.show_result_but_id);
 
@@ -98,7 +103,7 @@ public class main extends AppCompatActivity {
         show_result_but.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(new File("sdcard/data_cap").length()>0){
+                if(db_io.tracked_locations_exists()){
                     Intent intent1=new Intent(getApplicationContext(),show_results.class);
                     startActivity(intent1);}
                 else{
@@ -119,6 +124,8 @@ public class main extends AppCompatActivity {
                     Toast.makeText(getApplicationContext(),"GPS sensor is turned off",Toast.LENGTH_LONG).show();
                     return;
                 }
+                if(dist.getText().length()==0)dist.setText("0");
+                if(interv.getText().length()==0)interv.setText("0");
                 intent.putExtra("distance",back_ground_tracking.Stringnumtoint(dist.getText().toString()));
                 intent.putExtra("interval",back_ground_tracking.Stringnumtoint(interv.getText().toString())*60000);
                 startService(intent);
@@ -134,12 +141,24 @@ public class main extends AppCompatActivity {
             /*if both permissions are granted start the activity, else display an explaination about why the
             permissions are necessary;
             * */
-            if(grantResults.length>1&&((grantResults[0]|grantResults[1])== PackageManager.PERMISSION_GRANTED)){
-                init_activity();
-            }else{
-                //show an explanation and have user decide;
-                if(permission_warning.getVisibility()==View.GONE)permission_warning.setVisibility(View.VISIBLE);
+            //we need all the permissions; so we just loop through all the permissions;
+            int i=0;
+            while(i<grantResults.length){
+                if(grantResults[i]!=PackageManager.PERMISSION_GRANTED)break;
+                i++;
             }
+            if(grantResults.length==i){//this condition means all the permissions were granted; other wise the loop would break sooner that variable 'i' reaches 'grantResults.length';
+                init_activity();
+                return;
+            }
+            if(permission_warning.getVisibility()==View.GONE)permission_warning.setVisibility(View.VISIBLE);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        app_exited=true;
+        db_io.close();
     }
 }

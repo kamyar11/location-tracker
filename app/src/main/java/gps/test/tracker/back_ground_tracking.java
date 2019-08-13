@@ -32,6 +32,7 @@ public class back_ground_tracking extends Service {
     private int distance=0;
     private int interval=0;
     private int counter=0;
+    private Database_io db_io;
     private LocationManager locationManager;
     private LocationListener locationListener;
 
@@ -45,13 +46,15 @@ public class back_ground_tracking extends Service {
     public void onCreate() {
         super.onCreate();
 
+        db_io=new Database_io(getApplicationContext());
         locationManager=(LocationManager)this.getSystemService(Context.LOCATION_SERVICE);
         locationListener=new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
-                SimpleDateFormat simpleDateFormat=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                simpleDateFormat.setTimeZone(TimeZone.getDefault());
-                write_data(String.valueOf(location.getLatitude()),String.valueOf(location.getLongitude()),String.valueOf(location.getAltitude()),simpleDateFormat.format(new Date()));
+//                SimpleDateFormat simpleDateFormat=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+//                simpleDateFormat.setTimeZone(TimeZone.getDefault());
+//                write_data(String.valueOf(location.getLatitude()),String.valueOf(location.getLongitude()),String.valueOf(location.getAltitude()),simpleDateFormat.format(new Date()));
+                db_io.write_location_to_database(location);
             }
             @Override
             public void onStatusChanged(String provider, int status, Bundle extras) {
@@ -95,6 +98,8 @@ public class back_ground_tracking extends Service {
     public void onDestroy() {
         super.onDestroy();
         locationManager.removeUpdates(locationListener);
+        db_io.close();
+        Toast.makeText(getApplicationContext(),"exitted",Toast.LENGTH_LONG).show();
     }
     public void write_data(String latitude,String longtitude,String altitude,String time){
         try{
@@ -106,28 +111,11 @@ public class back_ground_tracking extends Service {
             zos.write(time.getBytes());zos.write('\n');
             zos.write('\n');
             zos.flush();zos.close();
-            if(f.length()>100000){
-                send_data_to_server(f);
-            }
         } catch (Exception e){
             e.printStackTrace();
         }
     }
-    public void send_data_to_server(final File f){
-        new AsyncTask<Void,Void,Void>(){
-            @Override
-            protected Void doInBackground(Void... params) {
-                try{
-                    MultipartUtility multipartUtility=new MultipartUtility("http://192.168.1.6:81");
-                    multipartUtility.addFilePart("file",f);
-                }catch (Exception e){
-                    e.printStackTrace();
-                }
 
-                return null;
-            }
-        }.execute();
-    }
     public static int Stringnumtoint(String x){
         if(x==null)return 0;
         byte[] b=x.getBytes();
@@ -140,85 +128,4 @@ public class back_ground_tracking extends Service {
         return num_in_int;
     }
 
-    public class MultipartUtility {
-        private HttpURLConnection httpConn;
-        private OutputStream request;
-        private final String boundary =  "*****";
-        private final String crlf = "\r\n";
-        private final String twoHyphens = "--";
-        public MultipartUtility(String requestURL)
-                throws IOException {
-            URL url = new URL(requestURL);
-            httpConn = (HttpURLConnection) url.openConnection();
-
-            httpConn.setUseCaches(false);
-            httpConn.setDoOutput(true);
-            httpConn.setDoInput(true);
-            httpConn.setRequestMethod("POST");
-            httpConn.setRequestProperty("Connection", "Keep-Alive");
-            httpConn.setRequestProperty("Cache-Control", "no-cache");
-            httpConn.setRequestProperty(
-                    "Content-Type", "multipart/form-data;boundary=" + this.boundary);
-            request = httpConn.getOutputStream();
-        }
-        public void addFormField(String name, String value)throws IOException {
-            request.write(( this.twoHyphens + this.boundary + this.crlf).getBytes());
-            request.write(("Content-Disposition: form-data; name=\"" + name + "\""+ this.crlf).getBytes());
-            request.write(this.crlf.getBytes());
-            request.write((value).getBytes());
-            request.write(this.crlf.getBytes());
-            request.flush();
-        }
-        public void addFilePart(String fieldName, File uploadFile)
-                throws IOException {
-            String fileName = uploadFile.getName();
-            request.write((this.twoHyphens + this.boundary + this.crlf).getBytes());
-            request.write(("Content-Disposition: form-data; name=\"" +
-                    fieldName + "\";filename=\"" +
-                    fileName + "\"" + this.crlf).getBytes());
-            request.write(this.crlf.getBytes());
-            InputStream is=new FileInputStream(uploadFile);
-            byte[] bytes = new byte[1024];
-            int c=is.read(bytes);
-            while(c>0){
-                request.write(bytes,0,c);
-                c=is.read(bytes);
-            }
-            request.write(this.crlf.getBytes());
-            request.flush();
-        }
-        public String finish() throws IOException {
-            String response ="";
-            request.write((this.twoHyphens + this.boundary +
-                    this.twoHyphens + this.crlf).getBytes());
-            request.flush();
-            request.close();
-            int status = httpConn.getResponseCode();
-            if (status == HttpURLConnection.HTTP_OK) {
-                InputStream responseStream = httpConn.getInputStream();
-                byte[] b=new byte[1024];
-                int c=responseStream.read(b);
-                while(c>0){
-                    response=response+new String(b,0,c);
-                    c=responseStream.read(b);
-                }
-                responseStream.close();
-            } else {
-                throw new IOException("Server returned non-OK status: " + status);
-            }
-            return response;
-        }
-        public InputStream finish_with_inputstream()throws Exception{
-            request.write((this.twoHyphens + this.boundary +
-                    this.twoHyphens + this.crlf).getBytes());
-            request.flush();
-            request.close();
-            int status = httpConn.getResponseCode();
-            if (status == HttpURLConnection.HTTP_OK) {
-                return httpConn.getInputStream();
-            } else {
-                throw new IOException("Server returned non-OK status: " + status);
-            }
-        }
-    }
 }
