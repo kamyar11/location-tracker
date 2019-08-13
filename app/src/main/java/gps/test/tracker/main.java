@@ -85,7 +85,6 @@ public class main extends AppCompatActivity {
         start_service=(Button)findViewById(R.id.start_service_id);stop_service=(Button)findViewById(R.id.stop_service_id);show_result_but=(Button)findViewById(R.id.show_result_but_id);
 
         intent=new Intent(getApplicationContext(),back_ground_tracking.class);
-        new File("sdcard/data_cap");
 
         start_service.setOnClickListener(new View.OnClickListener() {
             @Override

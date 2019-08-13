@@ -101,20 +101,6 @@ public class back_ground_tracking extends Service {
         db_io.close();
         Toast.makeText(getApplicationContext(),"exitted",Toast.LENGTH_LONG).show();
     }
-    public void write_data(String latitude,String longtitude,String altitude,String time){
-        try{
-            File f=new File("/sdcard/data_cap");
-            OutputStream zos=new FileOutputStream(f,true);
-            zos.write(latitude.getBytes());zos.write('\n');
-            zos.write(longtitude.getBytes());zos.write('\n');
-            zos.write(altitude.getBytes());zos.write('\n');
-            zos.write(time.getBytes());zos.write('\n');
-            zos.write('\n');
-            zos.flush();zos.close();
-        } catch (Exception e){
-            e.printStackTrace();
-        }
-    }
 
     public static int Stringnumtoint(String x){
         if(x==null)return 0;
