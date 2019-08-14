@@ -102,10 +102,12 @@ public class back_ground_tracking extends Service {
         super.onStartCommand(intent, flags, startId);
 
         if(Build.VERSION.SDK_INT>= Build.VERSION_CODES.O){
-            //make it a foreground service and show a notification about it;
-            //from android O on we notifications must have a notification chanel;
-            //check for stop button in the notification
+            //from android O on, android OS puts certain limitations on the background services;
+            //so we should make this a foreground service and show a notification about it so the OS would allow it to run in background;
+            //from android O on, notifications must have a notification chanel;
+
             if(intent.getExtras()==null||intent.getExtras().getString("command")==null||!intent.getExtras().getString("command").equals(back_ground_tracking.COMMAND_START_RESTART_TRACKING)){
+                //check for stop button in the notification;
                 stopForeground(true);
                 stopSelf();
                 return Service.START_NOT_STICKY;
