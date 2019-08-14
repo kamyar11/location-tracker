@@ -20,8 +20,8 @@
             <EditText
                 android:id="@+id/interval_id"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:hint="time interval"
+                android:layout_height="wrap_content"
+                android:hint="Minimum time interval(optional)"
                 android:inputType="number" />
         </LinearLayout>
 
@@ -35,8 +35,8 @@
             <EditText
                 android:id="@+id/distance_id"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:hint="minimum distance difference"
+                android:layout_height="wrap_content"
+                android:hint="Minimum distance change(optional)"
                 android:inputType="number" />
         </LinearLayout>
     </LinearLayout>
@@ -45,5 +45,5 @@
         android:id="@+id/done"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="start tracking" />
+        android:text="Start tracking" />
 </LinearLayout>

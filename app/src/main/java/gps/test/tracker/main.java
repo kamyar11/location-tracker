@@ -9,19 +9,18 @@ import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.appcompat.app.AppCompatActivity;
+
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import java.io.File;
 
 /**
  * Created by user_0 on 9/2/2017.
@@ -68,17 +67,21 @@ public class main extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-        permission_warning=findViewById(R.id.permission_warrning);
-        findViewById(R.id.ask_permissions).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                handle_permissions();
-            }
-        });
-        if(Build.VERSION.SDK_INT>22)handle_permissions();
+        if(Build.VERSION.SDK_INT>22) {
+            permission_warning = findViewById(R.id.permission_warrning);
+            findViewById(R.id.ask_permissions).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    handle_permissions();
+                }
+            });
+            handle_permissions();
+        }else{
+            init_activity();
+        }
     }
     private void init_activity(){
-        //permission 'granet' :)
+        //permission 'granit' :)
         permission_warning.setVisibility(View.GONE);
         db_io=new Database_io(getApplicationContext());
         locationManager=(LocationManager)this.getSystemService(Context.LOCATION_SERVICE);
@@ -115,6 +118,7 @@ public class main extends AppCompatActivity {
         final Dialog dialog=new Dialog(main.this);
         dialog.setContentView(R.layout.options);
         dialog.show();
+        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);
         dist=(EditText)dialog.findViewById(R.id.distance_id);interv=(EditText)dialog.findViewById(R.id.interval_id);
         dialog.findViewById(R.id.done).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -123,11 +127,25 @@ public class main extends AppCompatActivity {
                     Toast.makeText(getApplicationContext(),"GPS sensor is turned off",Toast.LENGTH_LONG).show();
                     return;
                 }
-                if(dist.getText().length()==0)dist.setText("0");
-                if(interv.getText().length()==0)interv.setText("0");
+                if(dist.getText().toString().length()==0){
+                    Toast.makeText(getApplicationContext(),"Minimum distance change must be at least zero",Toast.LENGTH_LONG).show();
+                    return;
+                }
+                if(interv.getText().toString().length()==0){
+                    Toast.makeText(getApplicationContext(),"Minimum Time interval must be at least zero",Toast.LENGTH_LONG).show();
+                    return;
+                }
+
                 intent.putExtra("distance",back_ground_tracking.Stringnumtoint(dist.getText().toString()));
                 intent.putExtra("interval",back_ground_tracking.Stringnumtoint(interv.getText().toString())*60000);
-                startService(intent);
+                //from android O on sole background services are limited and will be killed if app gets idle; so we must start as a  foreground service
+                // in order to keep it running
+                if(Build.VERSION.SDK_INT>= Build.VERSION_CODES.O){
+                    intent.putExtra("command",back_ground_tracking.COMMAND_START_RESTART_TRACKING);
+                    startForegroundService(intent);
+                }else {
+                    startService(intent);
+                }
                 start_service.setText("Restart with new configuration");
                 dialog.dismiss();
             }
@@ -146,7 +164,7 @@ public class main extends AppCompatActivity {
                 if(grantResults[i]!=PackageManager.PERMISSION_GRANTED)break;
                 i++;
             }
-            if(grantResults.length==i){//this condition means all the permissions were granted; other wise the loop would break sooner that variable 'i' reaches 'grantResults.length';
+            if(grantResults.length==i){//this condition means all the permissions were granted; otherwise the loop would have broken sooner that variable 'i' reaches 'grantResults.length';
                 init_activity();
                 return;
             }
