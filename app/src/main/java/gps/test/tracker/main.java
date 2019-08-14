@@ -33,7 +33,7 @@ public class main extends AppCompatActivity {
     private Intent intent;
     private boolean app_exited;
     private Database_io db_io;
-    private Thread check_if_permission_is_granted_yet_thread;
+    private Thread check_if_service_is_running_thread;
     private View permission_warning;
     private static final int WRITE_EXTERNAL_STORAGE_PERMISSION_REQUEST=0;
     private LocationManager locationManager;
@@ -113,6 +113,30 @@ public class main extends AppCompatActivity {
                 }
             }
         });
+        check_if_service_is_running_thread=new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while(!app_exited){
+                    try {
+                        Thread.sleep(1500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    main.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if(back_ground_tracking.Service_is_running&&!start_service.getText().equals("Restart with new configuration")){
+                                start_service.setText("Restart with new configuration");
+                            }
+                            if(!back_ground_tracking.Service_is_running&&start_service.getText().equals("Restart with new configuration")){
+                                start_service.setText("Start tracking location");
+                            }
+                        }
+                    });
+                }
+            }
+        });
+        check_if_service_is_running_thread.start();
     }
     private void Start(){
         final Dialog dialog=new Dialog(main.this);

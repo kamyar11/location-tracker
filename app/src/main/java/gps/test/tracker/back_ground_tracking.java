@@ -39,6 +39,7 @@ public class back_ground_tracking extends Service {
     private LocationListener locationListener;
     private LocationCallback locationCallback;
     public static final String COMMAND_START_RESTART_TRACKING="ddd";
+    public static boolean Service_is_running=false;
     private String chanel_id;
 
     @Nullable
@@ -100,7 +101,7 @@ public class back_ground_tracking extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
-
+        Service_is_running=true;
         if(Build.VERSION.SDK_INT>= Build.VERSION_CODES.O){
             //from android O on, android OS puts certain limitations on the background services;
             //so we should make this a foreground service and show a notification about it so the OS would allow it to run in background;
@@ -158,6 +159,7 @@ public class back_ground_tracking extends Service {
         super.onDestroy();
         locationManager.removeUpdates(locationListener);
         db_io.close();
+        Service_is_running=false;
     }
 
     public static int Stringnumtoint(String x){
