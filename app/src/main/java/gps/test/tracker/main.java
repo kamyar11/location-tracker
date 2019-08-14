@@ -117,11 +117,6 @@ public class main extends AppCompatActivity {
             @Override
             public void run() {
                 while(!app_exited){
-                    try {
-                        Thread.sleep(1500);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
                     main.this.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -133,6 +128,11 @@ public class main extends AppCompatActivity {
                             }
                         }
                     });
+                    try {
+                        Thread.sleep(1500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         });
