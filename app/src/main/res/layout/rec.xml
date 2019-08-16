@@ -16,14 +16,14 @@
             android:id="@+id/text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="3dp"
+            style="@style/rec_item_data"
             android:text="Timestamp" />
 
         <TextView
             android:id="@+id/time_stamp_id"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="3dp"
+            style="@style/rec_item_data"
             android:layout_toRightOf="@+id/text"
             android:text="TextView" />
     </RelativeLayout>
@@ -37,14 +37,14 @@
             android:id="@+id/text1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="3dp"
+            style="@style/rec_item_data"
             android:text="Latitude" />
 
         <TextView
             android:id="@+id/lat_id"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="3dp"
+            style="@style/rec_item_data"
             android:layout_toRightOf="@+id/text1"
             android:elevation="1dp"
             android:text="TextView" />
@@ -60,14 +60,14 @@
             android:id="@+id/text4"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="3dp"
+            style="@style/rec_item_data"
             android:text="Longtitude" />
 
         <TextView
             android:id="@+id/longt_id"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="3dp"
+            style="@style/rec_item_data"
             android:layout_toRightOf="@+id/text4"
             android:text="TextView" />
     </RelativeLayout>
@@ -81,14 +81,14 @@
             android:id="@+id/text3"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="3dp"
+            style="@style/rec_item_data"
             android:text="Altitude" />
 
         <TextView
             android:id="@+id/altit_id"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="3dp"
+            style="@style/rec_item_data"
             android:layout_toRightOf="@+id/text3"
             android:text="TextView" />
     </RelativeLayout>

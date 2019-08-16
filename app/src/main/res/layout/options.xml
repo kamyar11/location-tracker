@@ -21,8 +21,9 @@
                 android:id="@+id/interval_id"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Minimum time interval(optional)"
-                android:inputType="number" />
+                android:hint="Minimum time interval in seconds"
+                android:inputType="number"
+                android:textSize="13sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -36,8 +37,9 @@
                 android:id="@+id/distance_id"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Minimum distance change(optional)"
-                android:inputType="number" />
+                android:hint="Minimum distance change in meters"
+                android:inputType="number"
+                android:textSize="13sp" />
         </LinearLayout>
     </LinearLayout>
 
