@@ -21,7 +21,6 @@
             </intent-filter>
         </activity>
         <service android:name=".back_ground_tracking"></service>
-        <activity android:name=".show_results" android:screenOrientation="portrait"/>
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyCjV6kG_JF5ioo_1dtCZNHnBZVDSOcTY0E"/>

@@ -17,19 +17,13 @@
             android:background="#f7f7f7"
             android:orientation="horizontal">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:text="زمان بین ثبت نقاط به دقیقه"
-                android:textAppearance="@style/Base.TextAppearance.AppCompat.Large"
-                android:textSize="14sp" />
-
             <EditText
                 android:id="@+id/interval_id"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Minimum time interval in seconds"
                 android:inputType="number"
-                android:text="0" />
+                android:textSize="13sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -39,19 +33,13 @@
             android:background="#f7f7f7"
             android:orientation="horizontal">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:text="حداقل تغییر فاصله به متر"
-                android:textAppearance="@style/Base.TextAppearance.AppCompat.Large"
-                android:textSize="14sp" />
-
             <EditText
                 android:id="@+id/distance_id"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Minimum distance change in meters"
                 android:inputType="number"
-                android:text="0" />
+                android:textSize="13sp" />
         </LinearLayout>
     </LinearLayout>
 
@@ -59,5 +47,5 @@
         android:id="@+id/done"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="شروع" />
+        android:text="Start tracking" />
 </LinearLayout>

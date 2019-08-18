@@ -8,4 +8,12 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <style name="rec_item_data" >
+        <item name="android:layout_margin">1.5dp</item>
+        <item name="android:background">#F5F3F3</item>
+    </style>
+    <style name="large_menu">
+        <item name="android:layout_margin">10dp</item>
+        <item name="android:textSize">18sp</item>
+    </style>
 </resources>

@@ -1,9 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/world_map"
+    android:id="@+id/main"
+    android:background="#3F51B5"
     android:orientation="vertical">
+    <LinearLayout
+        android:background="@color/colorPrimaryDark"
+        android:layout_width="match_parent"
+        android:orientation="vertical"
+        android:weightSum="3"
+        android:layout_height="match_parent">
+
+        <com.google.android.gms.maps.MapView
+            android:id="@+id/mapView"
+            android:layout_weight="2"
+            android:layout_width="match_parent"
+            android:layout_height="0dp" />
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycy"
+            android:layout_weight="1"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"></androidx.recyclerview.widget.RecyclerView>
+    </LinearLayout>
+
+    <RelativeLayout
+        android:id="@+id/main_menu"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:background="#ECEFF3">
+
+        <TextView
+            android:id="@+id/start_service_id"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            style="@style/large_menu"
+            android:background="#FCFAFA"
+            android:padding="5dp"
+            android:text="Start tracking location"
+             />
+
+        <TextView
+            android:visibility="gone"
+            android:id="@+id/stop_service_id"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/start_service_id"
+            android:layout_centerHorizontal="true"
+            style="@style/large_menu"
+            android:background="#FCFAFA"
+            android:padding="5dp"
+            android:text="Stop tracking location"
+             />
+
+        <TextView
+            android:id="@+id/show_result_but_id"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/stop_service_id"
+            android:layout_centerHorizontal="true"
+            style="@style/large_menu"
+            android:background="#FCFAFA"
+            android:padding="5dp"
+            android:text="Show recorded locations"
+             />
+
+    </RelativeLayout>
 
     <RelativeLayout
         android:id="@+id/permission_warrning"
@@ -18,7 +84,7 @@
             android:layout_height="wrap_content"
             android:layout_alignParentTop="true"
             android:layout_centerHorizontal="true"
-            android:layout_margin="10dp"
+            style="@style/large_menu"
             android:background="#f7f7f7"
             android:padding="3dp"
             android:text="@string/permission_explanation"
@@ -36,50 +102,4 @@
             android:text="Ask for/ Check permission from Operating System" />
     </RelativeLayout>
 
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <Button
-            android:id="@+id/start_service_id"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_marginLeft="10dp"
-            android:layout_marginTop="10dp"
-            android:layout_marginEnd="10dp"
-            android:layout_marginRight="10dp"
-            android:layout_marginBottom="10dp"
-            android:singleLine="true"
-            android:text="Start tracking location" />
-
-        <Button
-            android:id="@+id/stop_service_id"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/start_service_id"
-            android:layout_marginStart="10dp"
-            android:layout_marginLeft="10dp"
-            android:layout_marginTop="10dp"
-            android:layout_marginEnd="10dp"
-            android:layout_marginRight="10dp"
-            android:layout_marginBottom="10dp"
-            android:text="Stop tracking location" />
-
-        <Button
-            android:id="@+id/show_result_but_id"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/stop_service_id"
-            android:layout_marginStart="10dp"
-            android:layout_marginLeft="10dp"
-            android:layout_marginTop="10dp"
-            android:layout_marginEnd="10dp"
-            android:layout_marginRight="10dp"
-            android:layout_marginBottom="10dp"
-            android:text="Show recorded locations" />
-
-
-    </RelativeLayout>
-
-</LinearLayout>
+</RelativeLayout>
