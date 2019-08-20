@@ -62,6 +62,7 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
     private LocationManager locationManager;
     private RelativeLayout main_menu;
 
+    private RecyclerView.LayoutManager layoutManager;
     private RecyclerView recyclerView;
     private fileadapter adap;
     private MapView mapView;
@@ -69,12 +70,85 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
 
     public static class location_info {
         public double lat, longt, alt;
-        long timestamp;
+        public long timestamp;
+
+        public location_info setLat(double lat) {
+            this.lat = lat;
+            return this;
+        }
+
+        public location_info setLongt(double longt) {
+            this.longt = longt;
+            return this;
+        }
+
+        public location_info setAlt(double alt) {
+            this.alt = alt;
+            return this;
+        }
+
+        public location_info setTimestamp(long timestamp) {
+            this.timestamp = timestamp;
+            return this;
+        }
+
+        public location_info setDate(String date) {
+            this.date = date;
+            return this;
+        }
+
+        public int position_in_db;
         private String date;
     }
-
-    private ArrayList<location_info> data = new ArrayList<>();
-
+    //below is a data_Array holder class which loads only the datas that are about to be seen by user and nulls unnecessary pointers;
+    // we have alllllot of locations to show after all, so memory management is a must;
+    private class recycler_data_set {
+        private ArrayList<location_info> data_array = new ArrayList<>(),temp;
+        static final int PRELOAD_SIZE=150;//how many data_Array be loaded before and after the current RecyclerView position;
+        public int current_view_position;//this value is updated as recyclerview is scrolled; so new_data_offset ('offset' value in the query sent
+        // to database) would be determined from this;
+        private int current_data_offset;//obvious!
+        public recycler_data_set(){
+            new Thread(new Runnable(){
+                @Override
+                public void run() {
+                    int new_data_offset;
+                    while (!app_exited){
+                        temp=new ArrayList<>();
+                        if(current_view_position<recycler_data_set.PRELOAD_SIZE)
+                            new_data_offset=0;
+                        else
+                            new_data_offset=current_view_position-recycler_data_set.PRELOAD_SIZE;
+                        Cursor cursor=db_io.get_all_locations_within(new_data_offset,recycler_data_set.PRELOAD_SIZE*2);
+                        while (cursor.moveToNext()&&!app_exited) {
+                            location_info l_i = new location_info().setTimestamp(cursor.getLong(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_timestamp)))
+                                    .setLat(cursor.getDouble(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_latitude)))
+                                    .setLongt(cursor.getDouble(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_longtitude)))
+                                    .setAlt(cursor.getDouble(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_altitude)));
+                            Calendar calendar = Calendar.getInstance();
+                            TimeZone tz = TimeZone.getDefault();
+                            calendar.setTimeInMillis(l_i.timestamp);
+                            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                            Date currenTimeZone = (Date) calendar.getTime();
+                            l_i.date=sdf.format(currenTimeZone);
+                            temp.add(l_i);
+                        }
+                        cursor.close();
+                        data_array=(ArrayList<location_info>)temp.clone();
+                        current_data_offset=new_data_offset;
+                        temp=null;
+                    }
+                }
+            }).start();
+        }
+        public location_info get(int position){
+            if(position-current_data_offset<data_array.size()){
+                return data_array.get(position-current_data_offset);
+            }
+            return null;//apologies; data is being loaded!
+        }
+    }
+    private recycler_data_set dataset;
 
     @TargetApi(23)
     private void handle_permissions(){
@@ -84,7 +158,6 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
                 != PackageManager.PERMISSION_GRANTED) {
             // Permission is not granted
             // Should we show an explanation?
-
             if (ActivityCompat.shouldShowRequestPermissionRationale(main.this,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE)||ActivityCompat.shouldShowRequestPermissionRationale(main.this,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
@@ -114,8 +187,6 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
         } catch (Exception e) {
             Toast.makeText(getApplicationContext(), e.toString(), Toast.LENGTH_LONG).show();
         }
-
-
         if(Build.VERSION.SDK_INT>22) {
             permission_warning = findViewById(R.id.permission_warrning);
             findViewById(R.id.ask_permissions).setOnClickListener(new View.OnClickListener() {
@@ -157,11 +228,9 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
         start_service_button =(TextView) findViewById(R.id.start_service_id);
         stop_service_button =(TextView) findViewById(R.id.stop_service_id);show_result_but=(TextView) findViewById(R.id.show_result_but_id);
         recyclerView = (RecyclerView) findViewById(R.id.recycy);
-        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(getApplicationContext());
+        layoutManager = new LinearLayoutManager(getApplicationContext());
         recyclerView.setLayoutManager(layoutManager);
 
-        adap = new fileadapter();
-        recyclerView.setAdapter(adap);
         db_io=new Database_io(getApplicationContext());
 
         location_tracker_service_intent =new Intent(getApplicationContext(),back_ground_tracking.class);
@@ -169,7 +238,7 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
         start_service_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Start();
+                get_tracking_options_and_start_or_restart_the_tracking_service();
             }
         });
         stop_service_button.setOnClickListener(new View.OnClickListener() {
@@ -190,6 +259,7 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
                     main_menu.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT,RelativeLayout.LayoutParams.WRAP_CONTENT));
                     main_menu.setBackgroundColor(Color.TRANSPARENT);
                     load_locations();
+                    show_result_but.setVisibility(View.GONE);
                 } else{
                     Toast.makeText(getApplicationContext(),"No location recorded" ,Toast.LENGTH_SHORT).show();
                 }
@@ -212,10 +282,13 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
                                 start_service_button.setText("Start tracking location");
                                 stop_service_button.setVisibility(View.GONE);
                             }
+                            if(show_result_but.getVisibility()==View.GONE){
+                                adap.notifyDataSetChanged();
+                            }
                         }
                     });
                     try {
-                        Thread.sleep(1500);
+                        Thread.sleep(1000);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -224,31 +297,34 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
         });
         check_if_service_is_running_thread.start();
     }
+//    public void load_locations() {
+//        Cursor cursor = db_io.get_all_locations();
+//        while (cursor.moveToNext()) {
+//            location_info l_i = new location_info();
+//            l_i.timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_timestamp));
+//            l_i.lat = cursor.getDouble(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_latitude));
+//            l_i.longt = cursor.getDouble(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_longtitude));
+//            l_i.alt = cursor.getDouble(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_altitude));
+//            Calendar calendar = Calendar.getInstance();
+//            TimeZone tz = TimeZone.getDefault();
+//            calendar.setTimeInMillis(l_i.timestamp);
+//            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+//            Date currenTimeZone = (Date) calendar.getTime();
+//            l_i.date=sdf.format(currenTimeZone);
+//            data.add(l_i);
+//        }
+//        adap.notifyDataSetChanged();
+//    }
     public void load_locations() {
-        Cursor cursor = db_io.get_all_locations();
-        while (cursor.moveToNext()) {
-            location_info l_i = new location_info();
-            l_i.timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_timestamp));
-            l_i.lat = cursor.getDouble(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_latitude));
-            l_i.longt = cursor.getDouble(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_longtitude));
-            l_i.alt = cursor.getDouble(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_altitude));
-
-            Calendar calendar = Calendar.getInstance();
-            TimeZone tz = TimeZone.getDefault();
-            calendar.setTimeInMillis(l_i.timestamp);
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            Date currenTimeZone = (Date) calendar.getTime();
-
-            l_i.date=sdf.format(currenTimeZone);
-            data.add(l_i);
-        }
+        dataset=new recycler_data_set();
+        adap = new fileadapter();
+        recyclerView.setAdapter(adap);
         adap.notifyDataSetChanged();
     }
     public class fileadapter extends RecyclerView.Adapter<fileadapter.fileholder> {
 
         private Marker marker;
         public fileadapter() {
-
         }
 
         public class fileholder extends RecyclerView.ViewHolder {
@@ -264,40 +340,42 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
                 alt = (TextView) view.findViewById(R.id.altit_id);
             }
         }
-
         public fileadapter.fileholder onCreateViewHolder(ViewGroup parent, int viewType) {
             View itemview = LayoutInflater.from(parent.getContext())
                     .inflate(R.layout.rec, parent, false);
             return new fileadapter.fileholder(itemview);
         }
-
         @Override
         public void onBindViewHolder(final fileadapter.fileholder holder, final int position) {
-//            Calendar calendar=Calendar.getInstance(Locale.ENGLISH);
-//            calendar.setTimeInMillis(1000L*(long)(back_ground_tracking.Stringnumtoint(data.get(position)[2])));
-
-
-            holder.lat.setText(String.valueOf(data.get(position).lat));
-            holder.longt.setText(String.valueOf(data.get(position).longt));
-            holder.alt.setText(String.valueOf(data.get(position).alt));
-            holder.time.setText(String.valueOf(data.get(position).timestamp));
-            holder.rec_lo.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    if(marker!=null)marker.remove();
-                    marker = googleMap.addMarker(new MarkerOptions()
-                            .position(new LatLng(data.get(position).lat, data.get(position).longt))
-                            .title(data.get(position).date));
-                    googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(marker.getPosition(), 1000));
-                }
-            });
+            dataset.current_view_position=position;
+            final location_info l_i=dataset.get(position);
+            if(l_i!=null){
+                holder.lat.setText(String.valueOf(l_i.lat));
+                holder.longt.setText(String.valueOf(l_i.longt));
+                holder.alt.setText(String.valueOf(l_i.alt));
+                holder.time.setText(String.valueOf(l_i.timestamp));
+                holder.rec_lo.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        if(marker!=null)marker.remove();
+                        marker = googleMap.addMarker(new MarkerOptions()
+                                .position(new LatLng(l_i.lat,l_i.longt))
+                                .title(l_i.date));
+                        googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(marker.getPosition(), 1000));
+                    }
+                });
+            }else{
+                holder.lat.setText(String.valueOf("loading..."));
+                holder.longt.setText(String.valueOf("loading..."));
+                holder.alt.setText(String.valueOf("loading..."));
+                holder.time.setText(String.valueOf("loading..."));
+            }
         }
-
         public int getItemCount() {
-            return data.size();
+            return (int)db_io.get_rows_count();
         }
     }
-    private void Start(){
+    private void get_tracking_options_and_start_or_restart_the_tracking_service(){
         final Dialog dialog=new Dialog(main.this);
         dialog.setContentView(R.layout.options);
         dialog.show();

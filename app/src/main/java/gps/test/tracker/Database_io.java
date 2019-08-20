@@ -16,7 +16,6 @@ public class Database_io extends SQLiteOpenHelper {
         public static final String recorded_locations_column_longtitude="longt";
         public static final String recorded_locations_column_altitude="alt";
         public static final String recorded_locations_column_timestamp="timestamp";
-
     }
     public static class Common_Queries{
         public static final String create_table_for_location_records="create table "+Database_info.recorded_locations_table_name+" (" +
@@ -25,10 +24,7 @@ public class Database_io extends SQLiteOpenHelper {
                 Database_info.recorded_locations_column_longtitude+" double not null, " +
                 Database_info.recorded_locations_column_altitude+" double not null " +
                 ");";
-        public static final String Write_location_data_to_db="insert into "+Database_info.recorded_locations_table_name;
-        public static final String Read_location_from_db="";
     }
-
     public static final int DATABASE_VERSION = 1;
     public static final String DATABASE_NAME = "FeedReader.db";
 
@@ -54,7 +50,7 @@ public class Database_io extends SQLiteOpenHelper {
         contentValues.put(Database_info.recorded_locations_column_altitude,location.getAltitude());
         contentValues.put(Database_info.recorded_locations_column_timestamp,location.getTime());
         if(getWritableDatabase().insert(Database_info.recorded_locations_table_name,null,contentValues)==-1)
-            Log.d("debug__","error wring data to database");
+            Log.d("debug__","error writing data to database");
     }
     public Cursor get_all_locations(){
         String[] projection = {
@@ -77,9 +73,22 @@ public class Database_io extends SQLiteOpenHelper {
                 sortOrder  // The sort order
         );
     }
+    public Cursor get_all_locations_within(int offset,int limit){
+        return getReadableDatabase().rawQuery("select * from " + Database_info.recorded_locations_table_name+
+                " order by "+ Database_info.recorded_locations_column_timestamp+
+                " limit " +limit+ " offset "+offset+
+                ";",null);
+    }
     public boolean tracked_locations_exists(){
         if(getReadableDatabase().rawQuery("SELECT 1 " +
                 "FROM "+Database_info.recorded_locations_table_name,null).getCount()>0)return true;
         return false;
+    }
+    public long get_rows_count(){
+        Cursor cursor= getReadableDatabase().rawQuery("select count(*) as rows_count from " + Database_info.recorded_locations_table_name+ ";",null);
+        cursor.moveToNext();
+        int c=cursor.getInt(cursor.getColumnIndexOrThrow("rows_count"));
+        cursor.close();
+        return c;
     }
 }
