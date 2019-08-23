@@ -6,24 +6,28 @@
     android:id="@+id/main"
     android:background="#3F51B5"
     android:orientation="vertical">
-    <LinearLayout
-        android:background="@color/colorPrimaryDark"
+
+    <RelativeLayout
+        android:id="@+id/show_result_parent"
         android:layout_width="match_parent"
-        android:orientation="vertical"
-        android:weightSum="3"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:background="@color/colorPrimaryDark"
+        android:orientation="vertical">
 
         <com.google.android.gms.maps.MapView
             android:id="@+id/mapView"
-            android:layout_weight="2"
             android:layout_width="match_parent"
-            android:layout_height="0dp" />
+            android:layout_height="match_parent"
+            android:layout_above="@+id/recycy"/>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recycy"
-            android:layout_weight="1"
             android:layout_width="match_parent"
-            android:layout_height="0dp"></androidx.recyclerview.widget.RecyclerView>
-    </LinearLayout>
+            android:layout_height="0dp"
+            android:layout_alignParentBottom="true">
+
+        </androidx.recyclerview.widget.RecyclerView>
+    </RelativeLayout>
 
     <RelativeLayout
         android:id="@+id/main_menu"
@@ -56,6 +60,19 @@
             android:padding="5dp"
             android:text="Stop tracking location"
              />
+
+        <TextView
+            android:visibility="gone"
+            android:id="@+id/filter_results_but"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/start_service_id"
+            android:layout_centerHorizontal="true"
+            style="@style/large_menu"
+            android:background="#FCFAFA"
+            android:padding="5dp"
+            android:text="Filter results"
+            />
 
         <TextView
             android:id="@+id/show_result_but_id"

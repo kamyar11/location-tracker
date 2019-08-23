@@ -2,7 +2,9 @@ package gps.test.tracker;
 
 import android.Manifest;
 import android.annotation.TargetApi;
+import android.app.DatePickerDialog;
 import android.app.Dialog;
+import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -16,19 +18,22 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.DialogFragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.transition.Fade;
 import androidx.transition.TransitionManager;
 
+import android.text.format.DateFormat;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.TimePicker;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -40,10 +45,13 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Formatter;
+import java.util.SimpleTimeZone;
 import java.util.TimeZone;
 
 /**
@@ -51,16 +59,17 @@ import java.util.TimeZone;
  */
 
 public class main extends AppCompatActivity implements OnMapReadyCallback {
-    private TextView start_service_button, stop_service_button,show_result_but;
-    private EditText dist,interv;
+    private TextView start_service_button, stop_service_button,show_result_but,filter_results_but;
+    private EditText dist,interv,start_date,end_date,start_time,end_time;
     private Intent location_tracker_service_intent;
     private boolean app_exited;
     private Database_io db_io;
-    private Thread check_if_service_is_running_thread;
+    private Thread keep_ui_updated_with_background_processes_thread;
     private View permission_warning;
     private static final int WRITE_EXTERNAL_STORAGE_PERMISSION_REQUEST=0;
     private LocationManager locationManager;
     private RelativeLayout main_menu;
+    private LinearLayout filter_options_menu;
 
     private RecyclerView.LayoutManager layoutManager;
     private RecyclerView recyclerView;
@@ -68,6 +77,46 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
     private MapView mapView;
     private GoogleMap googleMap;
 
+    public static class Date_and_Time_PickerFragment extends DialogFragment
+            implements TimePickerDialog.OnTimeSetListener, DatePickerDialog.OnDateSetListener {
+        public static final int Type_Date=1,Type_Time=0;
+        public int type=0;
+        private EditText editText;
+        public Date_and_Time_PickerFragment(int type,EditText editText_to_be_filled){
+            this.type=type;
+            this.editText=editText_to_be_filled;
+        }
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            if(type==Date_and_Time_PickerFragment.Type_Time) {
+                final Calendar c = Calendar.getInstance();
+                int hour = c.get(Calendar.HOUR_OF_DAY);
+                int minute = c.get(Calendar.MINUTE);
+                return new TimePickerDialog(getActivity(), this, hour, minute,
+                        DateFormat.is24HourFormat(getActivity()));
+            }
+            if(type==Date_and_Time_PickerFragment.Type_Date){
+                final Calendar c = Calendar.getInstance();
+                int year = c.get(Calendar.YEAR);
+                int month = c.get(Calendar.MONTH);
+                int day = c.get(Calendar.DAY_OF_MONTH);
+                return new DatePickerDialog(getActivity(), this, year, month, day);
+            }
+            return null;
+        }
+
+        public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
+            Calendar c=Calendar.getInstance();
+            c.set(Calendar.HOUR_OF_DAY,hourOfDay);
+            c.set(Calendar.MINUTE,minute);
+            editText.setText(new SimpleDateFormat("HH:mm").format(c.getTime()));
+        }
+        public void onDateSet(DatePicker datePicker, int i, int i1, int i2) {
+            Calendar c=Calendar.getInstance();
+            c.set(i,i1,i2);
+            editText.setText(new SimpleDateFormat("yyyy-MM-dd").format(c.getTime()));
+        }
+    }
     public static class location_info {
         public double lat, longt, alt;
         public long timestamp;
@@ -105,7 +154,7 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
     private class recycler_data_set {
         private ArrayList<location_info> data_array = new ArrayList<>(),temp;
         static final int PRELOAD_SIZE=150;//how many data_Array be loaded before and after the current RecyclerView position;
-        public int current_view_position;//this value is updated as recyclerview is scrolled; so new_data_offset ('offset' value in the query sent
+        public int current_view_position,all_rows_number=(int)db_io.get_all_rows_count();//this value is updated as recyclerview is scrolled; so new_data_offset ('offset' value in the query sent
         // to database) would be determined from this;
         private int current_data_offset;//obvious!
         public recycler_data_set(){
@@ -135,6 +184,7 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
                         }
                         cursor.close();
                         data_array=(ArrayList<location_info>)temp.clone();
+                        all_rows_number=(int)db_io.get_all_rows_count();
                         current_data_offset=new_data_offset;
                         temp=null;
                     }
@@ -146,6 +196,15 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
                 return data_array.get(position-current_data_offset);
             }
             return null;//apologies; data is being loaded!
+        }
+        public int total_size(){//how many rows in total?
+            return all_rows_number;
+        }
+        public void destroy_current_data(){
+            all_rows_number=(int)db_io.get_all_rows_count();
+            current_data_offset=0;
+            current_view_position=0;
+            data_array.removeAll(data_array);
         }
     }
     private recycler_data_set dataset;
@@ -215,30 +274,152 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
         textView.setTextSize(TypedValue.COMPLEX_UNIT_PX,getResources().getDimension(R.dimen.text_size_small));
         textView.setLayoutParams(small_layout_params);
     }
+    private Dialog get_tracking_options_dialog,get_filter_options_dialog;
     private void init_activity(){
         //permission 'granit' :)
+
         permission_warning.setVisibility(View.GONE);
 
         db_io=new Database_io(getApplicationContext());
 
         final RelativeLayout main=findViewById(R.id.main);
-        TransitionManager.beginDelayedTransition(main,new Fade(Fade.OUT));
+        TransitionManager.beginDelayedTransition(main,new androidx.transition.Slide());
+
         main_menu =main.findViewById(R.id.main_menu);
         locationManager=(LocationManager)this.getSystemService(Context.LOCATION_SERVICE);
         start_service_button =(TextView) findViewById(R.id.start_service_id);
-        stop_service_button =(TextView) findViewById(R.id.stop_service_id);show_result_but=(TextView) findViewById(R.id.show_result_but_id);
+        stop_service_button =(TextView) findViewById(R.id.stop_service_id);
+        show_result_but=(TextView) findViewById(R.id.show_result_but_id);
+        filter_results_but=(TextView)findViewById(R.id.filter_results_but);
         recyclerView = (RecyclerView) findViewById(R.id.recycy);
         layoutManager = new LinearLayoutManager(getApplicationContext());
         recyclerView.setLayoutManager(layoutManager);
+        filter_options_menu=(LinearLayout) getLayoutInflater().inflate(R.layout.filter_results_layout,null);
+
+        RelativeLayout.LayoutParams params=(RelativeLayout.LayoutParams)recyclerView.getLayoutParams();
+        params.height=(int)(getResources().getConfiguration().screenHeightDp*getResources().getDisplayMetrics().density/3);
+        recyclerView.setLayoutParams(params);
 
         db_io=new Database_io(getApplicationContext());
 
         location_tracker_service_intent =new Intent(getApplicationContext(),back_ground_tracking.class);
 
+        get_tracking_options_dialog =new Dialog(main.this);
+        get_tracking_options_dialog.setContentView(R.layout.options);
+        get_tracking_options_dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);
+        dist=(EditText) get_tracking_options_dialog.findViewById(R.id.distance_id);interv=(EditText) get_tracking_options_dialog.findViewById(R.id.interval_id);
+        get_tracking_options_dialog.findViewById(R.id.done).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)){
+                    Toast.makeText(getApplicationContext(),"GPS sensor is turned off",Toast.LENGTH_LONG).show();
+                    return;
+                }
+                if(dist.getText().toString().length()==0){
+                    Toast.makeText(getApplicationContext(),"Minimum distance change must be at least zero",Toast.LENGTH_LONG).show();
+                    return;
+                }
+                if(interv.getText().toString().length()==0){
+                    Toast.makeText(getApplicationContext(),"Minimum time interval must be at least zero",Toast.LENGTH_LONG).show();
+                    return;
+                }
+                location_tracker_service_intent.putExtra("distance",back_ground_tracking.Stringnumtoint(dist.getText().toString()));
+                location_tracker_service_intent.putExtra("interval",back_ground_tracking.Stringnumtoint(interv.getText().toString())*60000);
+                //from android O on sole background services are limited and will be killed if app gets idle; so we must start as a  foreground service
+                // in order to keep it running
+                if(Build.VERSION.SDK_INT>= Build.VERSION_CODES.O){
+                    location_tracker_service_intent.putExtra("command",back_ground_tracking.COMMAND_START_RESTART_TRACKING);
+                    startForegroundService(location_tracker_service_intent);
+                }else {
+                    startService(location_tracker_service_intent);
+                }
+                start_service_button.setText("Restart tracking with new configuration");
+                stop_service_button.setVisibility(View.VISIBLE);
+                get_tracking_options_dialog.dismiss();
+            }
+        });
+        get_filter_options_dialog=new Dialog(main.this);
+        get_filter_options_dialog.setContentView(R.layout.filter_results_layout);
+        get_filter_options_dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);
+        start_date=(EditText) get_filter_options_dialog.findViewById(R.id.after);
+        end_date=(EditText)get_filter_options_dialog.findViewById(R.id.before);
+        start_time=(EditText)get_filter_options_dialog.findViewById(R.id.after_time);
+        end_time=(EditText)get_filter_options_dialog.findViewById(R.id.before_time);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            start_date.setShowSoftInputOnFocus(false);
+            end_date.setShowSoftInputOnFocus(false);
+            start_time.setShowSoftInputOnFocus(false);
+            end_time.setShowSoftInputOnFocus(false);
+        } else {
+            start_date.setTextIsSelectable(true);
+            end_date.setTextIsSelectable(true);
+            start_time.setTextIsSelectable(true);
+            end_time.setTextIsSelectable(true);
+        }
+        start_date.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                DialogFragment a=new Date_and_Time_PickerFragment(Date_and_Time_PickerFragment.Type_Date,start_date);
+                a.show(getSupportFragmentManager(),"d");
+            }
+        });
+        end_date.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                DialogFragment a=new Date_and_Time_PickerFragment(Date_and_Time_PickerFragment.Type_Date,end_date);
+                a.show(getSupportFragmentManager(),"d");
+            }
+        });
+        start_time.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                DialogFragment a=new Date_and_Time_PickerFragment(Date_and_Time_PickerFragment.Type_Time,start_time);
+                a.show(getSupportFragmentManager(),"d");
+            }
+        });
+        end_time.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                DialogFragment a=new Date_and_Time_PickerFragment(Date_and_Time_PickerFragment.Type_Time,end_time);
+                a.show(getSupportFragmentManager(),"d");
+            }
+        });
+        get_filter_options_dialog.findViewById(R.id.apply_filter_but_id).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                try {
+                    if(start_date.getText().toString().length()==0){
+                        Toast.makeText(getApplicationContext(),"Set start date",Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    if(start_time.getText().toString().length()==0){
+                        Toast.makeText(getApplicationContext(),"Set start time",Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    if(end_date.getText().toString().length()==0){
+                        Toast.makeText(getApplicationContext(),"Set end date",Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    if(end_time.getText().toString().length()==0){
+                        Toast.makeText(getApplicationContext(),"Set end time",Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    db_io.filters.start_date_timestamp=new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(start_date.getText().toString()+" "+
+                            start_time.getText().toString()).getTime();
+                    db_io.filters.end_date_timestamp=new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(end_date.getText().toString()+" "+
+                            end_time.getText().toString()).getTime();
+                    dataset.destroy_current_data();
+                    adap.notifyDataSetChanged();
+                    get_filter_options_dialog.dismiss();
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
         start_service_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                get_tracking_options_and_start_or_restart_the_tracking_service();
+                get_tracking_options_dialog.show();
             }
         });
         stop_service_button.setOnClickListener(new View.OnClickListener() {
@@ -253,27 +434,37 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
             @Override
             public void onClick(View v) {
                 if(db_io.tracked_locations_exists()){
-                    apply_smaller_attributes_to_textview((TextView) main_menu.getChildAt(0));
-                    apply_smaller_attributes_to_textview((TextView) main_menu.getChildAt(1));
-                    apply_smaller_attributes_to_textview((TextView) main_menu.getChildAt(2));
+                    int i=0;
+                    while(i<main_menu.getChildCount()){
+                        apply_smaller_attributes_to_textview((TextView) main_menu.getChildAt(i));
+                        i++;
+                    }
                     main_menu.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT,RelativeLayout.LayoutParams.WRAP_CONTENT));
                     main_menu.setBackgroundColor(Color.TRANSPARENT);
                     load_locations();
                     show_result_but.setVisibility(View.GONE);
+                    filter_results_but.setVisibility(View.VISIBLE);
                 } else{
                     Toast.makeText(getApplicationContext(),"No location recorded" ,Toast.LENGTH_SHORT).show();
                 }
             }
         });
+        filter_results_but.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                get_filter_options_dialog.show();
+            }
+        });
         //check if for any reason(including user pressing the stop button in the notification on api levels>=26) the
         //service is destroyed;
-        check_if_service_is_running_thread=new Thread(new Runnable() {
+        keep_ui_updated_with_background_processes_thread =new Thread(new Runnable() {
             @Override
             public void run() {
                 while(!app_exited){
                     main.this.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            //obvious!
                             if(back_ground_tracking.Service_is_running&&!start_service_button.getText().equals("Restart tracking with new configuration")){
                                 start_service_button.setText("Restart tracking with new configuration");
                                 stop_service_button.setVisibility(View.VISIBLE);
@@ -282,7 +473,7 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
                                 start_service_button.setText("Start tracking location");
                                 stop_service_button.setVisibility(View.GONE);
                             }
-                            if(show_result_but.getVisibility()==View.GONE){
+                            if(show_result_but.getVisibility()==View.GONE){//we're showing results;
                                 adap.notifyDataSetChanged();
                             }
                         }
@@ -295,26 +486,8 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
                 }
             }
         });
-        check_if_service_is_running_thread.start();
+        keep_ui_updated_with_background_processes_thread.start();
     }
-//    public void load_locations() {
-//        Cursor cursor = db_io.get_all_locations();
-//        while (cursor.moveToNext()) {
-//            location_info l_i = new location_info();
-//            l_i.timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_timestamp));
-//            l_i.lat = cursor.getDouble(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_latitude));
-//            l_i.longt = cursor.getDouble(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_longtitude));
-//            l_i.alt = cursor.getDouble(cursor.getColumnIndexOrThrow(Database_io.Database_info.recorded_locations_column_altitude));
-//            Calendar calendar = Calendar.getInstance();
-//            TimeZone tz = TimeZone.getDefault();
-//            calendar.setTimeInMillis(l_i.timestamp);
-//            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-//            Date currenTimeZone = (Date) calendar.getTime();
-//            l_i.date=sdf.format(currenTimeZone);
-//            data.add(l_i);
-//        }
-//        adap.notifyDataSetChanged();
-//    }
     public void load_locations() {
         dataset=new recycler_data_set();
         adap = new fileadapter();
@@ -365,53 +538,15 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
                     }
                 });
             }else{
-                holder.lat.setText(String.valueOf("loading..."));
-                holder.longt.setText(String.valueOf("loading..."));
-                holder.alt.setText(String.valueOf("loading..."));
-                holder.time.setText(String.valueOf("loading..."));
+                holder.lat.setText("loading...");
+                holder.longt.setText("loading...");
+                holder.alt.setText("loading...");
+                holder.time.setText("loading...");
             }
         }
         public int getItemCount() {
-            return (int)db_io.get_rows_count();
+            return dataset.total_size();
         }
-    }
-    private void get_tracking_options_and_start_or_restart_the_tracking_service(){
-        final Dialog dialog=new Dialog(main.this);
-        dialog.setContentView(R.layout.options);
-        dialog.show();
-        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);
-        dist=(EditText)dialog.findViewById(R.id.distance_id);interv=(EditText)dialog.findViewById(R.id.interval_id);
-        dialog.findViewById(R.id.done).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if(!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)){
-                    Toast.makeText(getApplicationContext(),"GPS sensor is turned off",Toast.LENGTH_LONG).show();
-                    return;
-                }
-                if(dist.getText().toString().length()==0){
-                    Toast.makeText(getApplicationContext(),"Minimum distance change must be at least zero",Toast.LENGTH_LONG).show();
-                    return;
-                }
-                if(interv.getText().toString().length()==0){
-                    Toast.makeText(getApplicationContext(),"Minimum Time interval must be at least zero",Toast.LENGTH_LONG).show();
-                    return;
-                }
-
-                location_tracker_service_intent.putExtra("distance",back_ground_tracking.Stringnumtoint(dist.getText().toString()));
-                location_tracker_service_intent.putExtra("interval",back_ground_tracking.Stringnumtoint(interv.getText().toString())*60000);
-                //from android O on sole background services are limited and will be killed if app gets idle; so we must start as a  foreground service
-                // in order to keep it running
-                if(Build.VERSION.SDK_INT>= Build.VERSION_CODES.O){
-                    location_tracker_service_intent.putExtra("command",back_ground_tracking.COMMAND_START_RESTART_TRACKING);
-                    startForegroundService(location_tracker_service_intent);
-                }else {
-                    startService(location_tracker_service_intent);
-                }
-                start_service_button.setText("Restart tracking with new configuration");
-                stop_service_button.setVisibility(View.VISIBLE);
-                dialog.dismiss();
-            }
-        });
     }
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -453,7 +588,7 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
         mapView.onDestroy();
         super.onDestroy();
         app_exited=true;
-        db_io.close();
+        if(db_io!=null)db_io.close();
     }
 
     @Override
@@ -461,5 +596,4 @@ public class main extends AppCompatActivity implements OnMapReadyCallback {
         mapView.onLowMemory();
         super.onLowMemory();
     }
-
 }

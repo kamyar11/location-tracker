@@ -3,6 +3,7 @@ package gps.test.tracker;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.location.Location;
@@ -25,11 +26,21 @@ public class Database_io extends SQLiteOpenHelper {
                 Database_info.recorded_locations_column_altitude+" double not null " +
                 ");";
     }
+    public static class Filters{
+        public long start_date_timestamp=0,end_date_timestamp=Long.MAX_VALUE;
+        public String create_where_clause_columns(){
+            return Database_info.recorded_locations_column_timestamp+">=? and "+Database_info.recorded_locations_column_timestamp+"<=?";
+        }
+        public String[] create_where_clause_values(){
+            return new String[]{String.valueOf(start_date_timestamp),String.valueOf(end_date_timestamp)};
+        }
+    }
     public static final int DATABASE_VERSION = 1;
     public static final String DATABASE_NAME = "FeedReader.db";
-
+    public Filters filters;
     public Database_io(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
+        filters=new Database_io.Filters();
     }
     public void onCreate(SQLiteDatabase db) {
         db.execSQL(Common_Queries.create_table_for_location_records);
@@ -50,45 +61,29 @@ public class Database_io extends SQLiteOpenHelper {
         contentValues.put(Database_info.recorded_locations_column_altitude,location.getAltitude());
         contentValues.put(Database_info.recorded_locations_column_timestamp,location.getTime());
         if(getWritableDatabase().insert(Database_info.recorded_locations_table_name,null,contentValues)==-1)
-            Log.d("debug__","error writing data to database");
-    }
-    public Cursor get_all_locations(){
-        String[] projection = {
-                Database_info.recorded_locations_column_latitude,
-                Database_info.recorded_locations_column_longtitude,
-                Database_info.recorded_locations_column_altitude,
-                Database_info.recorded_locations_column_timestamp
-        };
-// Filter results WHERE "title" = 'My Title'
-//        String selection = FeedEntry.COLUMN_NAME_TITLE + " = ?";
-//        String[] selectionArgs = { "My Title" };
-        String sortOrder = Database_info.recorded_locations_column_timestamp + " ASC";
-        return getReadableDatabase().query(
-                Database_info.recorded_locations_table_name,   // The table to query
-                projection,             // The array of columns to return (pass null to get all)
-                null,              // The columns for the WHERE clause
-                null,          // The values for the WHERE clause
-                null,                   // don't group the rows
-                null,                   // don't filter by row groups
-                sortOrder  // The sort order
-        );
+            Log.d("debug__","Error writing data to database");
     }
     public Cursor get_all_locations_within(int offset,int limit){
-        return getReadableDatabase().rawQuery("select * from " + Database_info.recorded_locations_table_name+
-                " order by "+ Database_info.recorded_locations_column_timestamp+
-                " limit " +limit+ " offset "+offset+
-                ";",null);
+        return getReadableDatabase().query(
+                Database_info.recorded_locations_table_name,   // The table to query
+                null,             // The array of columns to return (pass null to get all)
+                filters.create_where_clause_columns(),              // The columns for the WHERE clause
+                filters.create_where_clause_values(),          // The values for the WHERE clause
+                null,                   // don't group the rows
+                null,                   // don't filter by row groups
+                Database_info.recorded_locations_column_timestamp + " ASC",//sort order
+                String.valueOf(offset)+", "+String.valueOf(limit)// limit, offset
+        );
     }
     public boolean tracked_locations_exists(){
         if(getReadableDatabase().rawQuery("SELECT 1 " +
                 "FROM "+Database_info.recorded_locations_table_name,null).getCount()>0)return true;
         return false;
     }
-    public long get_rows_count(){
-        Cursor cursor= getReadableDatabase().rawQuery("select count(*) as rows_count from " + Database_info.recorded_locations_table_name+ ";",null);
-        cursor.moveToNext();
-        int c=cursor.getInt(cursor.getColumnIndexOrThrow("rows_count"));
-        cursor.close();
-        return c;
+    public long get_all_rows_count(){
+        return DatabaseUtils.queryNumEntries(getReadableDatabase(),
+                Database_info.recorded_locations_table_name,
+                filters.create_where_clause_columns(),
+                filters.create_where_clause_values());
     }
 }
